@@ -863,7 +863,7 @@
 				reg = <0xfffc4000 0x100>;
 				interrupts = <21 IRQ_TYPE_LEVEL_HIGH 3>;
 				pinctrl-names = "default";
-				pinctrl-0 = <&pinctrl_macb_rmii>;
+				pinctrl-0 = <&pinctrl_macb_rmii_mii_alt>;
 				clocks = <&macb0_clk>, <&macb0_clk>;
 				clock-names = "hclk", "pclk";
 				status = "disabled";
