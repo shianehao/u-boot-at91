@@ -648,7 +648,12 @@ static struct phy_device *phy_device_create(struct mii_dev *bus, int addr,
 
 	dev->autoneg = AUTONEG_ENABLE;
 
+#ifdef CONFIG_MV88E6123_61_65
+	// force to 0 for Marvell standalone switch configure
+	dev->addr = 0;
+#else
 	dev->addr = addr;
+#endif
 	dev->phy_id = phy_id;
 	dev->is_c45 = is_c45;
 	dev->bus = bus;
@@ -951,8 +956,9 @@ int phy_startup(struct phy_device *phydev)
 
 __weak int board_phy_config(struct phy_device *phydev)
 {
-	if (phydev->drv->config)
+	if (phydev->drv->config) {
 		return phydev->drv->config(phydev);
+	}
 	return 0;
 }
 

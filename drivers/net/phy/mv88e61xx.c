@@ -757,9 +757,20 @@ static int mv88e61xx_set_cpu_port(struct phy_device *phydev)
 	if (val < 0)
 		return val;
 
+#ifdef CONFIG_MV88E6123_61_65
+	// force CPU port 100/full duplex
+	val = mv88e61xx_port_write(phydev, CONFIG_MV88E61XX_CPU_PORT, PORT_REG_PHYS_CTRL,
+				   0x003d);
+	if (val < 0)
+		return val;
+	val = mv88e61xx_port_read(phydev, CONFIG_MV88E61XX_CPU_PORT, PORT_REG_PHYS_CTRL);
+	phydev->duplex = DUPLEX_FULL;
+	phydev->speed = SPEED_100;
+#else
 	val = mv88e61xx_read_port_config(phydev, CONFIG_MV88E61XX_CPU_PORT);
 	if (val < 0)
 		return val;
+#endif
 
 	/* If CPU is connected to serdes, initialize serdes */
 	if (mv88e61xx_6352_family(phydev)) {
@@ -925,9 +936,12 @@ static int mv88e61xx_phy_config(struct phy_device *phydev)
 	if (res < 0)
 		return res;
 
+	phydev->flags |= PHY_FLAG_BROKEN_RESET;
 	for (i = 0; i < PORT_COUNT; i++) {
 		if ((1 << i) & CONFIG_MV88E61XX_PHY_PORTS) {
+#ifndef CONFIG_MV88E6123_61_65
 			phydev->addr = i;
+#endif
 
 			res = mv88e61xx_phy_enable(phydev, i);
 			if (res < 0) {
@@ -950,11 +964,13 @@ static int mv88e61xx_phy_config(struct phy_device *phydev)
 				printf("Error resetting PHY %i\n", i);
 				continue;
 			}
+#ifndef CONFIG_MV88E6123_61_65
 			res = genphy_config_aneg(phydev);
 			if (res < 0) {
 				printf("Error setting PHY %i autoneg\n", i);
 				continue;
 			}
+#endif
 
 			/* Return success if any PHY succeeds */
 			ret = 0;
@@ -1017,7 +1033,18 @@ static int mv88e61xx_phy_startup(struct phy_device *phydev)
 
 	return 0;
 }
-
+#ifdef CONFIG_MV88E6123_61_65
+static struct phy_driver mv88e61xx_driver = {
+	.name = "Marvell MV88E61xx",
+	.uid = 0x1410cb1,
+	.mask = 0xfffffff0,
+	.features = PHY_GBIT_FEATURES,
+	.probe = mv88e61xx_probe,
+	.config = mv88e61xx_phy_config,
+	.startup = mv88e61xx_phy_startup,
+	.shutdown = &genphy_shutdown,
+};
+#else
 static struct phy_driver mv88e61xx_driver = {
 	.name = "Marvell MV88E61xx",
 	.uid = 0x01410eb1,
@@ -1039,11 +1066,13 @@ static struct phy_driver mv88e609x_driver = {
 	.startup = mv88e61xx_phy_startup,
 	.shutdown = &genphy_shutdown,
 };
-
+#endif
 int phy_mv88e61xx_init(void)
 {
 	phy_register(&mv88e61xx_driver);
+#ifndef CONFIG_MV88E6123_61_65
 	phy_register(&mv88e609x_driver);
+#endif
 
 	return 0;
 }
@@ -1064,7 +1093,11 @@ int get_phy_id(struct mii_dev *bus, int smi_addr, int devad, u32 *phy_id)
 	 * read the ID
 	 */
 	temp_priv.mdio_bus = bus;
+#ifdef CONFIG_MV88E6123_61_65
+	temp_priv.smi_addr = 0;
+#else
 	temp_priv.smi_addr = smi_addr;
+#endif
 	temp_phy.priv = &temp_priv;
 	temp_mii.priv = &temp_phy;
 
