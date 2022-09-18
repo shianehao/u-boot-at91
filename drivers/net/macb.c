@@ -230,6 +230,7 @@ void __weak arch_get_mdio_control(const char *name)
 int macb_miiphy_read(struct mii_dev *bus, int phy_adr, int devad, int reg)
 {
 	u16 value = 0;
+	int backup;
 #ifdef CONFIG_DM_ETH
 	struct udevice *dev = eth_get_dev_by_name(bus->name);
 	struct macb_device *macb = dev_get_priv(dev);
@@ -237,19 +238,24 @@ int macb_miiphy_read(struct mii_dev *bus, int phy_adr, int devad, int reg)
 	struct eth_device *dev = eth_get_dev_by_name(bus->name);
 	struct macb_device *macb = to_macb(dev);
 #endif
-
+#if 0
 	if (macb->phy_addr != phy_adr)
 		return -1;
-
+#else
+	backup = macb->phy_addr;
+	macb->phy_addr = phy_adr;
+#endif
 	arch_get_mdio_control(bus->name);
 	value = macb_mdio_read(macb, reg);
 
+	macb->phy_addr = backup;
 	return value;
 }
 
 int macb_miiphy_write(struct mii_dev *bus, int phy_adr, int devad, int reg,
 		      u16 value)
 {
+	int backup;
 #ifdef CONFIG_DM_ETH
 	struct udevice *dev = eth_get_dev_by_name(bus->name);
 	struct macb_device *macb = dev_get_priv(dev);
@@ -257,12 +263,16 @@ int macb_miiphy_write(struct mii_dev *bus, int phy_adr, int devad, int reg,
 	struct eth_device *dev = eth_get_dev_by_name(bus->name);
 	struct macb_device *macb = to_macb(dev);
 #endif
-
+#if 0
 	if (macb->phy_addr != phy_adr)
 		return -1;
-
+#else
+	backup = macb->phy_addr;
+	macb->phy_addr = phy_adr;
+#endif
 	arch_get_mdio_control(bus->name);
 	macb_mdio_write(macb, reg, value);
+	macb->phy_addr = backup;
 
 	return 0;
 }
@@ -519,6 +529,9 @@ static int macb_phy_init(struct macb_device *macb, const char *name)
 	if (ret)
 		return ret;
 
+#ifdef CONFIG_MV88E6123_61_65
+	macb->phy_addr = 0x14;
+#endif
 	/* Check if the PHY is up to snuff... */
 	phy_id = macb_mdio_read(macb, MII_PHYSID1);
 	if (phy_id == 0xffff) {
@@ -597,6 +610,13 @@ static int macb_phy_init(struct macb_device *macb, const char *name)
 		}
 	}
 
+#ifdef CONFIG_MV88E6123_61_65
+	macb_mdio_write(macb, MII_BMCR, 0x0500);
+	macb_mdio_write(macb, MII_BMSR, 0x3d);
+
+	speed = 1;
+	duplex = 1;
+#else
 	/* fall back for EMAC checking */
 	adv = macb_mdio_read(macb, MII_ADVERTISE);
 	lpa = macb_mdio_read(macb, MII_LPA);
@@ -604,6 +624,7 @@ static int macb_phy_init(struct macb_device *macb, const char *name)
 	speed = (media & (ADVERTISE_100FULL | ADVERTISE_100HALF)
 		 ? 1 : 0);
 	duplex = (media & ADVERTISE_FULL) ? 1 : 0;
+#endif
 	printf("%s: link up, %sMbps %s-duplex (lpa: 0x%04x)\n",
 	       name,
 	       speed ? "100" : "10",

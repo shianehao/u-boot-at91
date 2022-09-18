@@ -86,6 +86,7 @@ int board_init(void)
 #ifdef CONFIG_CMD_NAND
 	at91sam9260ek_nand_hw_init();
 #endif
+	at91_macb_hw_init();
 	return 0;
 }
 
