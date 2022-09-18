@@ -50,6 +50,9 @@ config MV88E61XX_SWITCH
 
 if MV88E61XX_SWITCH
 
+config MV88E6123_61_65
+	bool "Marvel MV88E6123/61/65"
+
 config MV88E61XX_CPU_PORT
 	int "CPU Port"
 
